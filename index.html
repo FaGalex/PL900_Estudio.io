@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>PL-900 Tracker</title>
+  <meta name="description" content="Landing de progreso para estudiar PL-900: Microsoft Power Platform Fundamentals" />
+  <!-- Tailwind Play CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- React 18 + ReactDOM UMD -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <!-- Babel para permitir JSX en el navegador -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body class="min-h-screen bg-white text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useEffect, useMemo, useState } = React;
+    const LS_KEY = "pl900-progress-v1";
+
+    const initialDays = [
+      { id: 1,  title: "Intro a Power Platform", goals: ["Qué es y para qué sirve","Componentes y ecosistema"], links: ["https://learn.microsoft.com/es-es/training/modules/introduction-power-platform/"] },
+      { id: 2,  title: "Beneficios & Arquitectura", goals: ["Integración con M365/Azure/Dynamics","Roles: maker/admin"], links: [] },
+      { id: 3,  title: "Power BI — Fundamentos", goals: ["Desktop vs Service","Primer informe"], links: ["https://learn.microsoft.com/es-es/training/modules/get-started-power-bi/"] },
+      { id: 4,  title: "Power BI — Transformación & Modelo", goals: ["Power Query","Relaciones y DAX"], links: [] },
+      { id: 5,  title: "Power BI — Dashboards & Sharing", goals: ["Buenas prácticas de visualización","Publicar y compartir"], links: [] },
+      { id: 6,  title: "Repaso Power BI + Quiz", goals: ["Knowledge check","Identificar puntos débiles"], links: ["https://learn.microsoft.com/es-es/training/modules/get-started-power-bi/8-knowledge-check"] },
+      { id: 7,  title: "Power Apps — Tipos de Apps", goals: ["Canvas vs Model-driven vs Portals","Primera app"], links: ["https://learn.microsoft.com/es-es/training/modules/get-started-power-apps/"] },
+      { id: 8,  title: "Power Apps — Conectores & Controles", goals: ["Formularios, galerías, fórmulas","Buenas prácticas"], links: [] },
+      { id: 9,  title: "Power Automate — Flujos", goals: ["Automático/Instantáneo/Programado","Primer flujo"], links: ["https://learn.microsoft.com/es-es/training/modules/get-started-power-automate/"] },
+      { id: 10, title: "Power Automate Desktop — RPA", goals: ["Automatización escritorio","Precauciones RPA"], links: [] },
+      { id: 11, title: "Power Virtual Agents — Bots", goals: ["Temas y entidades","Publicación"], links: ["https://learn.microsoft.com/es-es/training/modules/get-started-power-virtual-agents/"] },
+      { id: 12, title: "Microsoft Dataverse", goals: ["Tablas/Relaciones","Seguridad (fila/columna)"], links: [] },
+      { id: 13, title: "Integración — Casos prácticos", goals: ["Apps + Automate + BI","Teams"], links: [] },
+      { id: 14, title: "Simulacro Final + Revisión", goals: ["MeasureUp / Learn Path","Checklist de examen"], links: ["https://www.measureup.com/microsoft-pl-900-microsoft-power-platform-fundamentals.html","https://learn.microsoft.com/es-es/training/paths/power-platform-fundamentals/"] },
+    ];
+
+    const loadState = () => {
+      try { return JSON.parse(localStorage.getItem(LS_KEY)) || null; } catch { return null; }
+    };
+    const saveState = (state) => {
+      try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch {}
+    };
+
+    function App() {
+      const saved = loadState();
+      const [entries, setEntries] = useState(() =>
+        saved?.entries || initialDays.map(d => ({
+          id: d.id, title: d.title, done: false, date: "", score: "", notes: "", links: d.links, goals: d.goals
+        }))
+      );
+      const [name, setName] = useState(saved?.name || "");
+      const [examDate, setExamDate] = useState(saved?.examDate || "");
+      const [dark, setDark] = useState(saved?.dark ?? true);
+
+      useEffect(() => {
+        document.documentElement.classList.toggle("dark", dark);
+      }, [dark]);
+
+      useEffect(() => {
+        saveState({ entries, name, examDate, dark });
+      }, [entries, name, examDate, dark]);
+
+      const completed = useMemo(() => entries.filter(e => e.done).length, [entries]);
+      const progress  = Math.round((completed / Math.max(1, entries.length)) * 100);
+
+      const updateEntry = (id, patch) => setEntries(prev => prev.map(e => e.id === id ? { ...e, ...patch } : e));
+
+      const addCustomDay = () => {
+        const nextId = entries.length ? Math.max(...entries.map(e => e.id)) + 1 : 1;
+        setEntries(prev => [...prev, { id: nextId, title: `Día ${nextId} — Personalizado`, done:false, date:"", score:"", notes:"", links:[], goals:[] }]);
+      };
+
+      const exportJSON = () => {
+        const blob = new Blob([JSON.stringify({ name, examDate, entries }, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url; a.download = "pl900-progress.json"; a.click();
+        URL.revokeObjectURL(url);
+      };
+
+      const importJSON = (file) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const data = JSON.parse(reader.result);
+            if (data?.entries?.length) setEntries(data.entries);
+            if (typeof data?.name === "string") setName(data.name);
+            if (typeof data?.examDate === "string") setExamDate(data.examDate);
+          } catch { alert("Archivo inválido"); }
+        };
+        reader.readAsText(file);
+      };
+
+      return (
+        <div>
+          <header className="border-b border-slate-200/40 dark:border-slate-800 sticky top-0 z-20 backdrop-blur bg-white/70 dark:bg-slate-950/70">
+            <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-indigo-500 to-sky-500"></div>
+                <div>
+                  <h1 className="text-xl font-semibold">PL-900 Tracker</h1>
+                  <p className="text-xs opacity-70">Landing page · progreso día a día</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button onClick={() => setDark(d => !d)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 text-sm">
+                  {dark ? "☀️ Claro" : "🌙 Oscuro"}
+                </button>
+                <button onClick={exportJSON} className="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm shadow">Exportar JSON</button>
+                <label className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 text-sm cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-900">
+                  Importar JSON
+                  <input type="file" accept="application/json" className="hidden" onChange={(e) => e.target.files && importJSON(e.target.files[0])} />
+                </label>
+              </div>
+            </div>
+          </header>
+
+          <section className="max-w-6xl mx-auto px-4 pt-8 pb-2">
+            <div className="grid md:grid-cols-3 gap-6">
+              <div className="md:col-span-2 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                <h2 className="text-2xl font-bold mb-2">Tu ruta hacia la certificación <span className="text-indigo-600">PL-900</span></h2>
+                <p className="opacity-80 mb-4">Registra tu avance diario, guarda notas y mide tu progreso del plan de 14 días. Ideal para desplegar como landing personal.</p>
+                <div className="grid sm:grid-cols-3 gap-4">
+                  <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                    <p className="text-xs opacity-70">Avance</p>
+                    <p className="text-2xl font-bold">{progress}%</p>
+                    <div className="mt-2 h-2 rounded-full bg-slate-200 dark:bg-slate-800">
+                      <div className="h-2 rounded-full bg-gradient-to-r from-indigo-500 to-sky-500" style={{ width: `${progress}%` }}></div>
+                    </div>
+                  </div>
+                  <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                    <p className="text-xs opacity-70">Días completos</p>
+                    <p className="text-2xl font-bold">{completed}/{entries.length}</p>
+                  </div>
+                  <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                    <p className="text-xs opacity-70">Fecha de examen</p>
+                    <input type="date" value={examDate} onChange={(e) => setExamDate(e.target.value)} className="mt-1 w-full bg-transparent border rounded-xl px-3 py-2 border-slate-200 dark:border-slate-700 text-sm" />
+                  </div>
+                </div>
+              </div>
+              <div className="p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                <label className="text-xs opacity-70">Tu nombre</label>
+                <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Tu nombre" className="mt-1 w-full bg-transparent border rounded-xl px-3 py-2 border-slate-200 dark:border-slate-700" />
+                <div className="mt-4 text-sm">
+                  <p className="opacity-80">Recursos rápidos:</p>
+                  <ul className="list-disc pl-5 space-y-1 mt-2">
+                    <li><a className="text-indigo-600 hover:underline" href="https://learn.microsoft.com/es-es/certifications/exams/pl-900/" target="_blank" rel="noreferrer">Guía oficial del examen</a></li>
+                    <li><a className="text-indigo-600 hover:underline" href="https://learn.microsoft.com/es-es/training/paths/power-platform-fundamentals/" target="_blank" rel="noreferrer">Ruta de aprendizaje Microsoft Learn</a></li>
+                    <li><a className="text-indigo-600 hover:underline" href="https://learn.microsoft.com/es-es/power-platform/developer-plan" target="_blank" rel="noreferrer">Developer Plan (entorno gratuito)</a></li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="max-w-6xl mx-auto px-4 py-6">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-semibold">Plan de 14 días</h3>
+              <div className="flex gap-2">
+                <button onClick={addCustomDay} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 text-sm hover:bg-slate-50 dark:hover:bg-slate-900">Añadir día personalizado</button>
+                <button onClick={() => setEntries(initialDays.map(d => ({ id:d.id, title:d.title, done:false, date:\"\", score:\"\", notes:\"\", links:d.links, goals:d.goals })))} className="px-3 py-2 rounded-xl text-sm bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:bg-slate-200/60 dark:hover:bg-slate-800">Resetear plan 14 días</button>
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-4">
+              {entries.map(e => (
+                <div key={e.id} className="rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-sm flex flex-col gap-3">
+                  <div className="flex items-center gap-3">
+                    <input type="checkbox" checked={e.done} onChange={(ev) => updateEntry(e.id, { done: ev.target.checked })} className="w-5 h-5 accent-indigo-600" />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-900/40">Día {e.id}</span>
+                        <h4 className="font-semibold">{e.title}</h4>
+                      </div>
+                      {!!(e.goals?.length) && (
+                        <ul className="mt-1 text-sm opacity-80 list-disc pl-5 space-y-0.5">
+                          {e.goals.map((g, idx) => <li key={idx}>{g}</li>)}
+                        </ul>
+                      )}
+                      {!!(e.links?.length) && (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {e.links.map((link, idx) => (
+                            <a key={idx} href={link} target="_blank" rel="noreferrer" className="text-xs px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900 text-indigo-600">Recurso {idx + 1}</a>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <label className="text-xs opacity-70">Fecha</label>
+                      <input type="date" value={e.date} onChange={(ev) => updateEntry(e.id, { date: ev.target.value })} className="mt-1 w-full bg-transparent border rounded-xl px-3 py-2 border-slate-200 dark:border-slate-700 text-sm" />
+                    </div>
+                    <div>
+                      <label className="text-xs opacity-70">Puntaje / Quiz</label>
+                      <input type="text" placeholder="ej. 8/10" value={e.score} onChange={(ev) => updateEntry(e.id, { score: ev.target.value })} className="mt-1 w-full bg-transparent border rounded-xl px-3 py-2 border-slate-200 dark:border-slate-700 text-sm" />
+                    </div>
+                    <div>
+                      <label className="text-xs opacity-70">Estado</label>
+                      <select value={e.done ? "Completado" : "Pendiente"} onChange={(ev) => updateEntry(e.id, { done: ev.target.value === "Completado" })} className="mt-1 w-full bg-transparent border rounded-xl px-3 py-2 border-slate-200 dark:border-slate-700 text-sm">
+                        <option>Pendiente</option>
+                        <option>Completado</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs opacity-70">Notas</label>
+                    <textarea value={e.notes} onChange={(ev) => updateEntry(e.id, { notes: ev.target.value })} placeholder="Resumen del día, dudas, enlaces adicionales…" className="mt
